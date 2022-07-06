@@ -15,7 +15,6 @@ import torch
 
 from pandas import DataFrame
 
-from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.tuning.optuna import OptunaTuner
@@ -41,8 +40,6 @@ _time_scores = {
     "lgb": 1,
     "lgb_tuned": 3,
     "linear_l2": 0.7,
-    "cb": 2,
-    "cb_tuned": 6,
     "nn": 1,
     "rf": 5,
     "rf_tuned": 10
@@ -100,8 +97,6 @@ class TabularCVAutoML(TabularAutoML):
         "lgb": 1,
         "lgb_tuned": 3,
         "linear_l2": 0.7,
-        "cb": 2,
-        "cb_tuned": 6,
         "rf": 5,
         "rf_tuned": 10
     }
@@ -193,7 +188,7 @@ class TabularCVAutoML(TabularAutoML):
             self.autocv_features["device"] = gpu_ids.split(",")
 
             if self.general_params["use_algos"] == "auto":
-                self.general_params["use_algos"] = [["linear_l2", "cb"]]
+                self.general_params["use_algos"] = [["linear_l2"]]
 
         else:
             self.autocv_features["device"] = "cpu"
@@ -269,8 +264,6 @@ class TabularCVAutoML(TabularAutoML):
             gbm_timer = self.timer.get_task_timer(algo_key, time_score)
             if algo_key == "lgb":
                 gbm_model = BoostLGBM(timer=gbm_timer, **self.lgb_params)
-            elif algo_key == "cb":
-                gbm_model = BoostCB(timer=gbm_timer, **self.cb_params)
             else:
                 raise ValueError("Wrong algo key")
 
@@ -319,7 +312,7 @@ class TabularCVAutoML(TabularAutoML):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+                x for x in ["lgb", "lgb_tuned"] if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:

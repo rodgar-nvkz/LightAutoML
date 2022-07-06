@@ -8,7 +8,10 @@ from typing import Dict
 from typing import Tuple
 from typing import Union
 
-import catboost as cb
+try:
+    import catboost as cb
+except ImportError as e:
+    raise ImportError("CatBoost is not supported in this fork") from e
 import numpy as np
 
 from pandas import Series

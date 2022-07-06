@@ -17,7 +17,6 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from ...automl.base import AutoML
 from ...automl.blend import WeightedBlender
 from ...dataset.roles import DatetimeRole
-from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
 from ...pipelines.features.lgb_pipeline import LGBSeqSimpleFeatures
@@ -224,12 +223,10 @@ class AutoTS:
         # model2 = LinearLBFGS(default_params={'cs': [1]})
         model2 = LinearLBFGS()
 
-        model3 = BoostCB()
         pipeline_lvl1 = MLPipeline([model], pre_selection=None, features_pipeline=feats_seq, post_selection=None)
         pipeline2_lvl1 = MLPipeline([model2], pre_selection=None, features_pipeline=feats_seq, post_selection=None)
-        pipeline3_lvl1 = MLPipeline([model3], pre_selection=None, features_pipeline=feats_seq, post_selection=None)
         self.automl_seq = AutoML(
-            reader_seq, [[pipeline_lvl1, pipeline2_lvl1, pipeline3_lvl1]], skip_conn=False, blender=WeightedBlender()
+            reader_seq, [[pipeline_lvl1, pipeline2_lvl1]], skip_conn=False, blender=WeightedBlender()
         )
 
         oof_pred_seq = self.automl_seq.fit_predict({"seq": {"seq0": train_detrend}}, roles=roles, verbose=verbose)

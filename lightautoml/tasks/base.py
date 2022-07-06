@@ -15,7 +15,6 @@ import numpy as np
 
 from .common_metric import _valid_metric_args
 from .common_metric import _valid_str_metric_names
-from .losses import CBLoss
 from .losses import LGBLoss
 from .losses import SKLoss
 from .losses import TORCHLoss
@@ -51,7 +50,7 @@ _default_metrics = {
     "multilabel": "logloss",
 }
 
-_valid_loss_types = ["lgb", "sklearn", "torch", "cb"]
+_valid_loss_types = ["lgb", "sklearn", "torch"]
 
 _valid_str_loss_names = {
     "binary": ["logloss"],
@@ -342,7 +341,7 @@ class Task:
                 loss, self.name
             )
 
-            for loss_key, loss_factory in zip(["lgb", "sklearn", "torch", "cb"], [LGBLoss, SKLoss, TORCHLoss, CBLoss]):
+            for loss_key, loss_factory in zip(["lgb", "sklearn", "torch"], [LGBLoss, SKLoss, TORCHLoss]):
                 try:
                     self.losses[loss_key] = loss_factory(loss, loss_params=loss_params)
                 except (AssertionError, TypeError, ValueError):

@@ -22,7 +22,6 @@ from tqdm import tqdm
 
 from ...addons.utilization import TimeUtilization
 from ...dataset.np_pd_dataset import NumpyDataset
-from ...ml_algo.boost_cb import BoostCB
 from ...ml_algo.boost_lgbm import BoostLGBM
 from ...ml_algo.linear_sklearn import LinearLBFGS
 from ...ml_algo.random_forest import RandomForestSklearn
@@ -108,7 +107,7 @@ class TabularAutoML(AutoMLPreset):
     _default_config_path = "tabular_config.yml"
 
     # set initial runtime rate guess for first level models
-    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "cb": 2, "cb_tuned": 6, "rf": 5, "rf_tuned": 10}
+    _time_scores = {"lgb": 1, "lgb_tuned": 3, "linear_l2": 0.7, "rf": 5, "rf_tuned": 10}
 
     def __init__(
         self,
@@ -186,12 +185,12 @@ class TabularAutoML(AutoMLPreset):
 
         if self.general_params["use_algos"] == "auto":
             # TODO: More rules and add cases
-            self.general_params["use_algos"] = [["lgb", "lgb_tuned", "linear_l2", "cb", "cb_tuned"]]
+            self.general_params["use_algos"] = [["lgb", "lgb_tuned", "linear_l2"]]
             if self.task.name == "multiclass" and multilevel_avail:
                 self.general_params["use_algos"].append(["linear_l2", "lgb"])
 
             if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                self.general_params["use_algos"] = [["linear_l2", "cb", "rf", "rf_tuned", "cb_tuned"]]
+                self.general_params["use_algos"] = [["linear_l2", "rf", "rf_tuned"]]
 
         if not self.general_params["nested_cv"]:
             self.nested_cv_params["cv"] = 1
@@ -236,10 +235,6 @@ class TabularAutoML(AutoMLPreset):
             mult *= 0.8 if self.general_params["skip_conn"] else 0.1
 
         score = score * mult
-
-        # lower score for catboost on gpu
-        if model_type in ["cb", "cb_tuned"] and self.cb_params["default_params"]["task_type"] == "GPU":
-            score *= 0.5
         return score
 
     def get_selector(self, n_level: Optional[int] = 1) -> SelectionPipeline:
@@ -266,16 +261,10 @@ class TabularAutoML(AutoMLPreset):
             # timer will be useful to estimate time for next gbm runs
             selection_feats = LGBSimpleFeatures()
 
-            if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                time_score = self.get_time_score(n_level, "cb", False)
-                sel_timer_0 = self.timer.get_task_timer("cb", time_score)
-                selection_gbm = BoostCB(timer=sel_timer_0, **cb_params)
-                model_name = "cb"
-            else:
-                time_score = self.get_time_score(n_level, "lgb", False)
-                sel_timer_0 = self.timer.get_task_timer("lgb", time_score)
-                selection_gbm = BoostLGBM(timer=sel_timer_0, **lgb_params)
-                model_name = "lgb"
+            time_score = self.get_time_score(n_level, "lgb", False)
+            sel_timer_0 = self.timer.get_task_timer("lgb", time_score)
+            selection_gbm = BoostLGBM(timer=sel_timer_0, **lgb_params)
+            model_name = "lgb"
             selection_gbm.set_prefix("Selector")
             time_score = self.get_time_score(n_level, model_name, False)
 
@@ -298,10 +287,7 @@ class TabularAutoML(AutoMLPreset):
 
                 sel_timer_1 = self.timer.get_task_timer(model_name, time_score)
                 selection_feats = LGBSimpleFeatures()
-                if (self.task.name == "multi:reg") or (self.task.name == "multilabel"):
-                    selection_gbm = BoostCB(timer=sel_timer_1, **cb_params)
-                else:
-                    selection_gbm = BoostLGBM(timer=sel_timer_1, **lgb_params)
+                selection_gbm = BoostLGBM(timer=sel_timer_1, **lgb_params)
                 selection_gbm.set_prefix("Selector")
 
                 # TODO: Check about reusing permutation importance
@@ -354,8 +340,6 @@ class TabularAutoML(AutoMLPreset):
             gbm_timer = self.timer.get_task_timer(algo_key, time_score)
             if algo_key == "lgb":
                 gbm_model = BoostLGBM(timer=gbm_timer, **self.lgb_params)
-            elif algo_key == "cb":
-                gbm_model = BoostCB(timer=gbm_timer, **self.cb_params)
             else:
                 raise ValueError("Wrong algo key")
 
@@ -444,7 +428,7 @@ class TabularAutoML(AutoMLPreset):
                 lvl.append(self.get_linear(n + 1, selector))
 
             gbm_models = [
-                x for x in ["lgb", "lgb_tuned", "cb", "cb_tuned"] if x in names and x.split("_")[0] in self.task.losses
+                x for x in ["lgb", "lgb_tuned"] if x in names and x.split("_")[0] in self.task.losses
             ]
 
             if len(gbm_models) > 0:

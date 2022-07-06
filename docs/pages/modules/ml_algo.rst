@@ -45,7 +45,6 @@ Boosted Trees
     :template: classtemplate.rst
 
     ~boost_lgbm.BoostLGBM
-    ~boost_cb.BoostCB
 
 WhiteBox
 -------------------------
